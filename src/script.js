@@ -1,106 +1,91 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import Stats from 'stats.js';
-import * as dat from 'lil-gui';
-import './style.css';
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { MapControls } from "three/examples/jsm/controls/MapControls";
+import Stats from "stats.js";
+import * as dat from "lil-gui";
+import "./style.css";
 
 const scene = new THREE.Scene();
-const canvas = document.querySelector('.canvas');
+const axesHelper = new THREE.AxesHelper(500);
+scene.add(axesHelper);
+scene.background = new THREE.Color(0xcccccc);
+scene.fog = new THREE.FogExp2(0xcccccc, 0.001);
+const canvas = document.querySelector(".canvas");
 
 const stats = new Stats();
 stats.showPanel(0);
 document.body.appendChild(stats.dom);
 
 const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight,
+  width: window.innerWidth,
+  height: window.innerHeight,
 };
 
-const cursor = {
-    x: 0,
-    y: 0,
-};
+const orthographicCamer = new THREE.OrthographicCamera(-100, 100, 100, -100);
+orthographicCamer.position.set(0, 100, 250);
 
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height);
-camera.position.z = 5;
-camera.position.y = 0.8;
+scene.add(orthographicCamer);
 
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(1500, 700),
+  new THREE.MeshStandardMaterial({
+    color: "darkgreen",
+    metalness: 0,
+    roughness: 0.5,
+  })
+);
 
-scene.add(camera);
+floor.receiveShadow = true;
 
-const gui = new dat.GUI({ closeFolders: true, width: 200 });
+floor.rotation.x = -Math.PI * 0.5;
+scene.add(floor);
 
-const textureLoader = new THREE.TextureLoader();
-const color = textureLoader.load('/textures/lava/basecolor.jpg');
-const roughness = textureLoader.load('/textures/lava/roughness.jpg');
-const norm = textureLoader.load('/textures/lava/normal.jpg');
-const ao = textureLoader.load('/textures/lava/ambientOcclusion.jpg');
-const emissive = textureLoader.load('/textures/lava/emissive.jpg');
-const height = textureLoader.load('/textures/lava/height.png');
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.61);
+hemiLight.position.set(0, 50, 0);
+scene.add(hemiLight);
 
-const geometry = new THREE.SphereGeometry(2, 100, 100);
-const material = new THREE.MeshStandardMaterial({
-    map: color,
-    roughnessMap: roughness,
-    normalMap: norm,
-    aoMap: ao,
-    emissive: emissive,
-    displacementMap: height,
-    displacementScale: 0.3
-});
-const mesh = new THREE.Mesh(geometry, material);
-scene.add(mesh);
-
-gui.add(mesh.material, 'roughness').min(0).max(1);
-gui.add(mesh.material, 'aoMapIntensity').min(0).max(1);
-gui.add(mesh.material, 'displacementScale').min(0).max(1.5);
-gui.add(mesh.material.normalScale, 'x').min(0).max(5);
-gui.add(mesh.material.normalScale, 'y').min(0).max(5);
-
-
-const light = new THREE.AmbientLight(0xefefef, 1.5);
-const pointLight = new THREE.PointLight(0xff9000, 3);
-pointLight.position.set(3, 3, 3);
-const pointLight2 = new THREE.PointLight(0x000000, 6);
-pointLight2.position.set(-3, -3, 3);
-
-scene.add(light);
-scene.add(pointLight);
-scene.add(pointLight2)
 
 const renderer = new THREE.WebGLRenderer({ canvas });
 renderer.setSize(sizes.width, sizes.height);
-renderer.render(scene, camera);
+renderer.render(scene, orthographicCamer);
+
+const controls = new MapControls(orthographicCamer, renderer.domElement);
+controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+controls.dampingFactor = 0.05;
+
+controls.screenSpacePanning = false;
+
+controls.minDistance = 100;
+controls.maxDistance = 500;
+
+controls.maxPolarAngle = Math.PI / 2;
 
 const clock = new THREE.Clock();
 const tick = () => {
-    stats.begin();
-    const delta = clock.getDelta();
-    mesh.rotation.y += delta * 0.2;
+  stats.begin();
+  const delta = clock.getDelta();
+  // mesh.rotation.y += delta * 0.2;
 
-    controls.update();
-    renderer.render(scene, camera);
+  controls.update();
+  renderer.render(scene, orthographicCamer);
 
-    stats.end();
-    window.requestAnimationFrame(tick);
+  stats.end();
+  window.requestAnimationFrame(tick);
 };
 
 tick();
 
-window.addEventListener('resize', () => {
-    // Обновляем размеры
-    sizes.width = window.innerWidth;
-    sizes.height = window.innerHeight;
+window.addEventListener("resize", () => {
+  // Обновляем размеры
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
 
-    // Обновляем соотношение сторон камеры
-    camera.aspect = sizes.width / sizes.height;
-    camera.updateProjectionMatrix();
+  // Обновляем соотношение сторон камеры
+  // orthographicCamer.aspect = sizes.width / sizes.height;
+  // orthographicCamer.updateProjectionMatrix();
 
-    // Обновляем renderer
-    renderer.setSize(sizes.width, sizes.height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.render(scene, camera);
+  // Обновляем renderer
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.render(scene, orthographicCamer);
 });
-
